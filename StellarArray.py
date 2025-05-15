@@ -1,5 +1,6 @@
 import time
 import random
+import math
 
 class StellarArray:
     def __init__(self):
@@ -35,40 +36,114 @@ class StellarArray:
         for i in range(15):
             for j in range(15):
                 calc_idx = (i // 5) % 3  # Assign to calculators 0, 1, 2
-                # Simulate SUB operation (e.g., price difference)
                 reg_idx = (i * 15 + j) % 38
                 self.calculators[calc_idx]["registers"][reg_idx] = data[i * 15 + j]
                 grid[i][j] = self.calculators[calc_idx]["registers"][reg_idx]
                 self.time_delay += 0.004  # ~4 ms per operation
+        return grid
 
-        # Fourth calculator aggregates (~225 comparisons)
-        results = []
+    def aec_computation(self, neutron_data):
+        # Simulate AEC computation (e.g., neutron multiplication factor k for Los Alamos)
+        print("Starting AEC computation...")
+        data = self.read_tape(neutron_data)  # ~225 neutron counts, ~800 bits
+        grid = self.compute_15x15_grid(data)  # Compute differences
+
+        # Calculate k (neutron multiplication factor) using fourth calculator
+        k = 0
         for i in range(15):
             for j in range(15):
-                # Simulate CMP operation (threshold = 5)
+                # Simplified k calculation: sum neutron counts, normalize
+                k += grid[i][j]
+                self.time_delay += 0.001  # ~1 ms per operation
+        k = k / (15 * 15)  # Average neutron count
+        self.time_delay += 22  # ~22 s for comparisons
+        result = f"Neutron multiplication factor k: {k:.2f}"
+        self.write_output([result])
+        return result
+
+    def cea_computation(self, reactor_data):
+        # Simulate CEA computation (e.g., 15x15 reactor criticality)
+        print("Starting CEA computation...")
+        data = self.read_tape(reactor_data)  # ~225 temperature/pressure points
+        grid = self.compute_15x15_grid(data)
+
+        # Calculate criticality (simplified: average temp/pressure)
+        criticality = 0
+        for i in range(15):
+            for j in range(15):
+                criticality += grid[i][j]
+                self.time_delay += 0.001
+        criticality = criticality / (15 * 15)
+        self.time_delay += 22  # ~22 s for comparisons
+        result = f"Reactor criticality index: {criticality:.2f}"
+        self.write_output([result])
+        return result
+
+    def trading_computation(self, price_data):
+        # Simulate trading computation (e.g., arbitrage on 15x15 grid)
+        print("Starting trading computation...")
+        data = self.read_tape(price_data)  # ~225 prices (NYSE vs. Curb)
+        grid = self.compute_15x15_grid(data)
+
+        # Identify arbitrage opportunities (spread > 5)
+        trades = []
+        for i in range(15):
+            for j in range(15):
                 self.time_delay += 0.001  # ~1 ms per comparison
                 if grid[i][j] > 5:  # Simplified threshold
-                    results.append(f"Trade at [{i},{j}]: {grid[i][j]}")
+                    trades.append(f"Trade at [{i},{j}]: Spread {grid[i][j]}")
         self.time_delay += 22  # ~22 s for subroutine calls
-        return results
+        self.write_output(trades)
+        return trades
 
-    def simulate(self, input_data):
+    def art_generation(self, pattern_data):
+        # Simulate art generation (e.g., fractal patterns for MoMA exhibit)
+        print("Starting art generation...")
+        data = self.read_tape(pattern_data)  # ~225 values for fractal angles
+        grid = self.compute_15x15_grid(data)
+
+        # Generate fractal-like pattern (simplified: sine-based angles)
+        artwork = []
+        for i in range(15):
+            for j in range(15):
+                angle = math.sin(grid[i][j] * 0.1) * 360  # Map to 0-360 degrees
+                self.time_delay += 0.001
+                artwork.append(f"Point [{i},{j}]: Angle {angle:.1f}°")
+        self.time_delay += 22  # ~22 s for processing
+        self.write_output(artwork)
+        return artwork
+
+    def simulate(self, input_data, computation_type):
         print("Starting simulation...")
-        # Step 1: Load data
-        data = self.read_tape(input_data)
-        print(f"Data loaded in {self.time_delay:.2f} s")
-
-        # Step 2: Compute 15x15 grid
-        results = self.compute_15x15_grid(data)
-        print(f"Computation done in {self.time_delay:.2f} s")
-
-        # Step 3: Output results
-        self.write_output(results)
+        self.time_delay = 0  # Reset delay
+        if computation_type == "aec":
+            result = self.aec_computation(input_data)
+        elif computation_type == "cea":
+            result = self.cea_computation(input_data)
+        elif computation_type == "trading":
+            result = self.trading_computation(input_data)
+        elif computation_type == "art":
+            result = self.art_generation(input_data)
+        else:
+            raise ValueError("Unknown computation type")
         print(f"Total time: {self.time_delay:.2f} s")
+        return result
 
-# Test the simulator
+# Test the simulator with different computations
 if __name__ == "__main__":
-    # Simulate 15x15 grid input (~225 prices, ~800 bits)
-    input_data = [random.randint(0, 10) for _ in range(225)]  # Simplified prices
     array = StellarArray()
-    array.simulate(input_data)
+    # Test data: 15x15 grid (~225 points)
+    neutron_data = [random.randint(0, 10) for _ in range(225)]  # AEC: Neutron counts
+    reactor_data = [random.randint(20, 80) for _ in range(225)]  # CEA: Temp/pressure
+    price_data = [random.randint(0, 10) for _ in range(225)]  # Trading: Price diffs
+    pattern_data = [random.randint(0, 360) for _ in range(225)]  # Art: Angles
+
+    # Run simulations
+    print("\n=== AEC Simulation ===")
+    array.simulate(neutron_data, "aec")
+    print("\n=== CEA Simulation ===")
+    array.simulate(reactor_data, "cea")
+    print("\n=== Trading Simulation ===")
+    array.simulate(price_data, "trading")
+    print("\n=== Art Simulation ===")
+    array.simulate(pattern_data, "art")
