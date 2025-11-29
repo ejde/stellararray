@@ -1,67 +1,74 @@
 # Stellar Array Trading Algorithm Example
 
-This document illustrates the low-level "code" used by the Stellar Array for the Trading Simulation. It is divided into two parts: the **Program** (loaded into Wire Storage) and the **Data** (fed via Punched Tape).
+This document illustrates the low-level "code" used by the Stellar Array for the Trading Simulation. It demonstrates a **Differential Calculation** (Price at $t_{i+j}$ - Price at $t_i$).
 
 ## 1. Wire Storage (Program Code)
-The Stellar Array uses **Étoile Code**, a specialized instruction set for parallel matrix operations. The following sequence is loaded into the 150,000-bit wire storage to execute the Trading Algorithm.
+The Stellar Array uses **Étoile Code**. The following sequence performs a two-pass operation: first loading the baseline prices, then streaming the current prices to calculate the spread in real-time.
 
-### Operation: Arbitrage Detection (Spread > 5)
+### Operation: Differential Arbitrage (Price($t_{i+j}$) - Price($t_i$) > 5)
 
 ```assembly
 ; HEADER
-; SEQ_ID: 0x4F (Trading)
+; SEQ_ID: 0x50 (Trading_Diff)
 ; ARCH: 15x15_STD
 
 ; --- INITIALIZATION ---
-0001: SYS_RST              ; Reset all Vacuum Tubes and Flip-Flops
-0002: IO_MODE_TAPE         ; Set Input Source to High-Speed Tape Reader
-0003: MAP_STRIPE_STD       ; Enable Standard Striping (Rows 0-4->C0, 5-9->C1, 10-14->C2)
+0001: SYS_RST              ; Reset all Vacuum Tubes
+0002: MAP_STRIPE_STD       ; Enable Standard Striping
 
-; --- INGEST PHASE ---
-0004: LOAD_GRID_WAIT       ; Start Tape Reader. Wait until all 225 nodes are filled.
-                           ; (Hardware handles the modulo-38 register routing automatically)
+; --- PHASE 1: LOAD BASELINE (Time Ti) ---
+0003: IO_MODE_TAPE         ; Select Input
+0004: LOAD_GRID_LATCH      ; Read 225 values from Tape Block A.
+                           ; Store directly into Flip-Flop Grid (Memory Bank).
+                           ; These are the "Opening Prices".
 
-; --- PARALLEL COMPUTATION PHASE ---
-; The following instructions execute on Calculators 0, 1, and 2 simultaneously.
+; --- PHASE 2: COMPUTE SPREAD (Time Ti+j) ---
+; The Array now reads the second block (Current Prices).
+; Instead of storing them, it immediately subtracts the Memory value.
 
-0005: P_LOAD_CONST 0x05    ; Load constant '5' into the Accumulator Shadow Register
-0006: P_COMP_GT            ; Compare: Register[i] > Accumulator
-                           ; If True: Set corresponding Flip-Flop High (1)
-                           ; If False: Set corresponding Flip-Flop Low (0)
+0005: P_LOAD_CONST 0x05    ; Load Threshold '5' into Accumulator Shadow
+0006: P_STREAM_OP_SUB      ; Begin Streaming Computation:
+                           ;   For each incoming Value V_curr (from Tape):
+                           ;   1. Fetch V_base from corresponding Grid Node [r,c]
+                           ;   2. Compute: ACC = V_curr - V_base
+                           ;   3. Compare: ACC > 0x05
+                           ;   4. If True: Fire Thyratron (Signal Output)
+                           ;      (Note: A Thyratron is a gas-filled tube used here as a high-speed latch/switch to store the "Hit" state)
+                           ;   5. If False: Suppress
 
 ; --- AGGREGATION PHASE ---
-; Executed by Calculator 3 (The Master Unit)
+; As the Thyratrons fire, the Master Unit aggregates the signals.
 
-0007: M_SCAN_GRID          ; Scan the 15x15 Flip-Flop Array for High (1) bits
-0008: BR_ZERO 0011         ; Branch to 0011 if no High bits found
+0007: M_LATCH_RESULTS      ; Capture the fired Thyratrons into the Output Buffer
+0008: IO_MODE_NIXIE        ; Select Output
+0009: M_OUT_ADDR_DIFF      ; Print Ticker and Calculated Spread for hits
+                           ; Format: "TICKER-[Row][Col]: +[Spread]"
 
-0009: IO_MODE_NIXIE        ; Set Output to Nixie Display
-0010: M_OUT_ADDR_VAL       ; Output the Address [Row,Col] and Value of all High nodes
-                           ; Format: "TICKER-[Row][Col]: BUY"
-
-0011: HALT                 ; End of Program
+0010: HALT                 ; End of Cycle
 ```
 
 ## 2. Input Tape (Data Stream)
-The input tape contains the raw market data. Since the program logic is pre-loaded, the tape only needs to carry the values.
+The tape must now contain **two distinct blocks** of data.
 
-**Physical Format**: 5-hole paper tape (Baudot-style encoding).
-**Logical Format**: Stream of 8-bit Integers (0-255).
+**Physical Format**: 5-hole paper tape.
+**Logical Format**: Block A (Baseline) followed by Block B (Current).
 
 ### Example Tape Segment
 
-| Sequence | Binary (Holes) | Hex | Decimal | Meaning / Mapping |
+| Sequence | Value (Hex) | Decimal | Context | Operation Performed |
 | :--- | :--- | :--- | :--- | :--- |
-| **Start** | `11111111` | `FF` | - | **Start of Data Block** |
-| 1 | `00000011` | `03` | 3 | Node [0,0] (Spread=3) $\rightarrow$ Calc 0, Reg 0 |
-| 2 | `00001000` | `08` | 8 | Node [0,1] (Spread=8) $\rightarrow$ Calc 0, Reg 1 |
-| 3 | `00000001` | `01` | 1 | Node [0,2] (Spread=1) $\rightarrow$ Calc 0, Reg 2 |
+| **Start A** | `FF` | - | **Start Block A ($t_i$)** | - |
+| 1 | `0A` | 10 | Node [0,0] Price | **STORE** $\rightarrow$ Grid[0,0] = 10 |
+| 2 | `14` | 20 | Node [0,1] Price | **STORE** $\rightarrow$ Grid[0,1] = 20 |
 | ... | ... | ... | ... | ... |
-| 225 | `00000100` | `04` | 4 | Node [14,14] (Spread=4) $\rightarrow$ Calc 2, Reg 37 |
-| **End** | `11111111` | `FF` | - | **End of Data Block** |
+| **End A** | `FF` | - | **End Block A** | - |
+| **Start B** | `FE` | - | **Start Block B ($t_{i+j}$)** | - |
+| 226 | `0C` | 12 | Node [0,0] Price | **SUB**: $12 - 10 = 2$. ($2 \ngtr 5$). **NO ACTION**. |
+| 227 | `1D` | 29 | Node [0,1] Price | **SUB**: $29 - 20 = 9$. ($9 > 5$). **SIGNAL BUY**. |
+| ... | ... | ... | ... | ... |
+| **End B** | `FE` | - | **End Block B** | - |
 
 ### Execution Result
-Based on the code above:
-1.  **Node [0,0]** (Value 3): `3 > 5` is False. Flip-Flop stays 0.
-2.  **Node [0,1]** (Value 8): `8 > 5` is True. Flip-Flop sets to 1.
-3.  **Output**: The Master Scan detects Node [0,1] is High and prints the buy signal.
+1.  **Node [0,0]**: Price rose from 10 to 12. Spread is +2. Below threshold. Ignored.
+2.  **Node [0,1]**: Price rose from 20 to 29. Spread is +9. Above threshold.
+3.  **Output**: `TICKER-[0][1]: +9`
