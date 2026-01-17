@@ -1,45 +1,46 @@
 # Stellar Array Simulator
 
 ## Overview
-The Stellar Array is a fictional 1946 computational machine designed as a **massive parallel pre-computation device**. Unlike general-purpose computers (like the ENIAC), the Stellar Array is specialized for grid-based matrix operations, utilizing a unique architecture of 700 vacuum tubes distributed across four distinct calculation units.
+The Stellar Array is a fictional 1946 computational machine designed as a **massive parallel pre-computation device**. Unlike general-purpose computers (like the ENIAC) which process one thing at a time, the Stellar Array is specialized for processing entire 15x15 grids of data at once. It utilizes a unique architecture of 700 vacuum tubes distributed across four distinct calculation units.
 
-Its primary function is to ingest large datasets via punched tape, map them onto a 15x15 memory grid, and perform simultaneous parallel operations (comparisons, differentials, pattern matching) before a final aggregation step. This "pre-computation" architecture allows it to process complex fields (like stock spreads or neutron flux gradients) significantly faster than sequential accumulators of the era.
+Its primary function is to ingest large datasets, map them onto a memory grid, and perform simultaneous parallel operations—like comparing stock prices or checking neutron flux levels—before a final aggregation step.
 
-## Technical Specifications
+## How It Works: A Deep Dive
+Imagine you are a scientist in 1946. You don't have a microchip; you have vacuum tubes, which are hot, expensive, and burn out if you use too many. You need to compare 225 numbers (a 15x15 grid) instantly. How do you do it?
 
-### Hardware Architecture
+### 1. The Input: The "Time-Travel" Tape
+The Stellar Array doesn't have "RAM" like a modern computer where you can jump around randomly. It reads from a **Punched Tape** that moves in one direction.
+*   **Structure**: The tape is organized into **Blocks**.
+    *   **Block A (The Past)**: This block contains the "Baseline" data (e.g., stock prices at 9:00 AM). The machine reads this first and "memorizes" it.
+    *   **Block B (The Present)**: This block contains the live data (e.g., stock prices at 9:01 AM).
+*   **The Trick**: The machine doesn't store Block B. As Block B streams through the reader, the machine *immediately* subtracts it from the memorized Block A. It calculates the difference "on the fly" before the data is lost forever.
+
+### 2. The Code: "Wire Storage"
+There is no hard drive. The "program" is literally hard-wired.
+*   **Étoile Code**: Instructions are stored on **Wire Storage** (a precursor to magnetic core memory).
+*   **The Logic**: The code is simple. It tells the machine: "When you see a number from the tape, send it to Row 5, Column 3, and subtract it from what's already there. If the result is bigger than 5, turn on the light."
+
+### 3. Communication: The "Striped" Architecture
+This is the genius of the Stellar Array. If you tried to connect 225 memory cells to one central processor, you'd need thousands of tubes for the switching logic—too many!
+Instead, the designers used **Striping**:
+*   They split the 15x15 grid into three horizontal slices (5 rows each).
+*   **Calculator 0** owns Rows 0–4.
+*   **Calculator 1** owns Rows 5–9.
+*   **Calculator 2** owns Rows 10–14.
+
+**Why? Speed.**
+When the tape reader sends a signal for "Row 7", Calculator 0 and 2 don't even wake up. Only Calculator 1 listens. This allows the machine to route data 3x faster than a single processor could manage.
+
+### 4. Output: The Aggregator (Calculator 3)
+Calculators 0, 1, and 2 are "dumb." They only know about their own 5 rows. They can't see the big picture.
+*   When a Calculator finds an interesting result (e.g., "Price spread > 5"), it fires a **Thyratron** (a gas-filled tube acting as a switch).
+*   **Calculator 3** (The Aggregator) sits above the others. It scans these Thyratrons.
+*   If it sees enough firing, or a specific pattern of fires, it triggers the final **Nixie Tube Display** or punches a result card.
+
+## Technical Specifications (Summary)
 - **Total Vacuum Tubes**: 700
-    - **Calculator Units 0-2**: 166 tubes each (Primary Parallel Processors).
-    - **Calculator Unit 3**: 200 tubes (Aggregator & Control Logic).
-- **Memory**:
-    - **Wire Storage**: 150,000 bits (~18.75 KB), used for instruction sequences and look-up tables.
-    - **Flip-Flops**: 464 units (~3,712 bits), serving as high-speed registers for the active 15x15 grid.
-- **I/O**:
-    - **Input**: High-speed punched tape reader (~100 bits/s).
-    - **Output**: Nixie tube display array (~10 bits/s).
-
-### Operational Workflow
-
-The Stellar Array operates in a strict four-phase cycle, which this simulator emulates:
-
-1.  **Ingest (Tape Read)**:
-    Data is read sequentially from the punched tape. Each datum represents a value for a specific node in the 15x15 grid.
-
-2.  **Route & Stripe (The "Stellar" Mapping)**:
-    The array does not use a single central memory bank. Instead, data is **striped** across three parallel Calculators to maximize throughput:
-    - **Rows 0-4** (75 nodes) $\rightarrow$ **Calculator 0**
-    - **Rows 5-9** (75 nodes) $\rightarrow$ **Calculator 1**
-    - **Rows 10-14** (75 nodes) $\rightarrow$ **Calculator 2**
-    
-    Incoming data is routed in real-time to the appropriate Calculator's register bank (modulo 38 addressing) before being latched into the Flip-Flop grid.
-
-3.  **Parallel Pre-Computation**:
-    Once the grid is loaded, all three Calculators trigger simultaneously. They perform local operations on their assigned rows independent of each other.
-    - *Example (Trading)*: All 225 nodes compare their values against a threshold (e.g., spread > 5) instantly.
-    - *Example (AEC)*: Differential gradients are calculated between adjacent nodes.
-
-4.  **Aggregation**:
-    The fourth Calculator (200 tubes) sweeps the results from the three parallel units to compute the final system state (e.g., "Criticality Index" or "Buy Signals").
+- **Memory**: 464 Flip-Flops (Storing the 15x15 grid).
+- **Speed**: ~100 bits/second (Tape Reader limit).
 
 ## Installation & Usage
 1.  **Prerequisites**: Python 3.6+ (Standard Library only).
@@ -61,4 +62,3 @@ The Stellar Array operates in a strict four-phase cycle, which this simulator em
 
 ## License
 Unlicensed / Educational Use.
-

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Array Architecture (1946)</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>STELLAR ARRAY ARCHITECTURE</h1>
+            <div id="status-bar">STATUS: IDLE</div>
+        </header>
+
+        <section id="controls">
+            <button id="btn-start" class="primary">START TRADING SIM</button>
+            <div class="separator"></div>
+            <button id="btn-pause">⏯ PLAY/PAUSE</button>
+            <div class="separator"></div>
+            <label>SPEED: <input type="range" id="speed-slider" min="10" max="1000" value="100"></label>
+        </section>
+
+        <main id="machine-view">
+            <!-- COL 1: TAPE -->
+            <div class="panel" id="tape-panel">
+                <h2>INPUT TAPE</h2>
+                <div id="tape-container">
+                    <div id="tape-stream">
+                        <!-- Tape Items JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- COL 2: CALCULATORS -->
+            <div class="panel" id="calc-panel">
+                <h2>CALCULATORS (STRIPED)</h2>
+                <div id="calculator-stack">
+                    <!-- Calc 0 -->
+                    <div class="calc-unit" id="calc-0">
+                        <div class="calc-header">CALCULATOR 0 <span class="calc-sub">(Rows 0-4)</span></div>
+                        <div class="calc-status">IDLE</div>
+                        <div class="register-grid"></div>
+                    </div>
+                    <!-- Calc 1 -->
+                    <div class="calc-unit" id="calc-1">
+                        <div class="calc-header">CALCULATOR 1 <span class="calc-sub">(Rows 5-9)</span></div>
+                        <div class="calc-status">IDLE</div>
+                        <div class="register-grid"></div>
+                    </div>
+                    <!-- Calc 2 -->
+                    <div class="calc-unit" id="calc-2">
+                        <div class="calc-header">CALCULATOR 2 <span class="calc-sub">(Rows 10-14)</span></div>
+                        <div class="calc-status">IDLE</div>
+                        <div class="register-grid"></div>
+                    </div>
+                    <!-- Calc 3 (Aggregator) -->
+                    <div class="calc-unit" id="calc-3" style="border-top: 2px solid #555; margin-top: 10px;">
+                        <div class="calc-header" style="color: #ff00ff;">CALCULATOR 3 (AGGREGATOR)</div>
+                        <div class="calc-status">WAITING FOR SIGNAL...</div>
+                        <div class="register-grid" style="display:none;"></div> <!-- No visible regs for simplicity -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- COL 3: GRID -->
+            <div class="panel" id="grid-panel">
+                <h2>15x15 MEMORY ARRAY</h2>
+                <div id="main-grid">
+                    <!-- 15x15 Cells JS -->
+                </div>
+            </div>
+
+            <!-- COL 4: OUTPUT -->
+            <div class="panel" id="output-panel">
+                <h2>OUTPUT (NIXIE)</h2>
+                <div id="output-list">
+                    <!-- Output Items JS -->
+                </div>
+            </div>
+        </main>
+
+        <section id="mission-control">
+            <h2>SYSTEM OPERATIONS LOG</h2>
+            <div id="log-content">
+                <div class="log-entry">System Ready. Awaiting Input Tape...</div>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

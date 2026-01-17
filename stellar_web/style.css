@@ -1,0 +1,257 @@
+:root {
+    --bg-color: #0d0d0d;
+    --panel-bg: #141414;
+    --border-color: #333;
+    --text-primary: #e0e0e0;
+    --text-accent: #00ff41; /* CRT Green */
+    --text-dim: #666;
+    --highlight-active: #1a2a1a;
+    --highlight-border: #00ff41;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+}
+
+h1, h2, .calc-header {
+    font-family: 'Courier Prime', monospace;
+    margin: 0;
+    font-weight: 700;
+}
+
+#app {
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    height: 100vh;
+    padding: 10px;
+    gap: 10px;
+    box-sizing: border-box;
+}
+
+/* HEADER */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+}
+header h1 { color: var(--text-accent); font-size: 1.5rem; letter-spacing: 2px; }
+#status-bar { font-family: 'Courier Prime', monospace; color: #ffcc00; }
+
+/* CONTROLS */
+#controls {
+    display: flex;
+    align-items: center;
+    background: var(--panel-bg);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    gap: 15px;
+}
+button {
+    background: #333;
+    color: white;
+    border: 1px solid #555;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+button:hover { background: #444; }
+button.primary { background: #004400; border-color: #00ff41; color: #00ff41; }
+button.primary:hover { background: #005500; }
+
+.separator { width: 1px; height: 20px; background: #444; }
+
+/* MAIN VIEW */
+#machine-view {
+    display: grid;
+    grid-template-columns: 180px 300px 1fr 200px;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel h2 {
+    background: #1a1a1a;
+    color: var(--text-accent);
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* TAPE */
+#tape-container {
+    flex: 1;
+    overflow-y: hidden; /* Programmatic scroll */
+    position: relative;
+    background: black;
+}
+#tape-stream {
+    padding-top: 50%; /* Center start */
+    transition: transform 0.2s ease-out;
+}
+.tape-item {
+    font-family: 'Courier Prime', monospace;
+    padding: 5px 10px;
+    border-bottom: 1px solid #222;
+    color: #888;
+    height: 30px;
+    display: flex;
+    align-items: center;
+}
+.tape-item.active-read {
+    background: #222;
+    color: white;
+    font-weight: bold;
+    border-left: 4px solid var(--text-accent);
+}
+
+/* CALCULATORS */
+#calculator-stack {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+}
+.calc-unit {
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s;
+}
+.calc-unit.active-calc {
+    background: var(--highlight-active);
+    box-shadow: inset 0 0 10px rgba(0,255,65,0.1);
+}
+.calc-header {
+    font-size: 0.85rem;
+    color: #4da6ff;
+    margin-bottom: 2px;
+}
+.calc-sub { color: #666; font-size: 0.7rem; font-family: 'Inter', sans-serif;}
+.calc-status {
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 5px;
+    height: 1.2em;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.register-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+}
+.reg-cell {
+    background: black;
+    color: #444;
+    font-family: monospace;
+    font-size: 0.6rem;
+    text-align: center;
+    padding: 2px 0;
+    border: 1px solid #222;
+}
+.reg-cell.highlight {
+    background: var(--text-accent);
+    color: black;
+    font-weight: bold;
+}
+
+/* MAIN GRID */
+#main-grid {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    grid-template-rows: repeat(15, 1fr);
+    gap: 2px;
+    padding: 10px;
+    background: black;
+    height: 100%;
+    align-content: start;
+}
+.grid-cell {
+    background: #111;
+    color: #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
+    font-size: 0.8rem;
+    border: 1px solid #222;
+    transition: background 0.2s;
+    aspect-ratio: 1;
+}
+.grid-cell.latched {
+    background: #222;
+    color: #ccc;
+    border-color: #444;
+}
+.grid-cell.active-compute {
+    background: #ffcc00;
+    color: black;
+    font-weight: bold;
+}
+.grid-cell.buy-signal {
+    background: #004400;
+    color: #00ff41;
+    border-color: #00ff41;
+}
+
+/* OUTPUT */
+#output-list {
+    flex: 1;
+    background: black;
+    padding: 5px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.9rem;
+    overflow-y: auto;
+}
+.out-line { padding: 4px; border-bottom: 1px solid #111; color: #666; }
+.out-line.buy { color: var(--text-accent); font-weight: bold; }
+
+/* LOG */
+#mission-control {
+    background: #000;
+    border: 1px solid var(--text-accent);
+    color: var(--text-accent);
+    font-family: 'Courier Prime', monospace;
+    display: flex;
+    flex-direction: column;
+    height: 150px;
+    box-shadow: 0 0 10px rgba(0,255,65,0.1);
+}
+#mission-control h2 {
+    background: var(--text-accent);
+    color: black;
+    font-size: 0.9rem;
+    padding: 2px 10px;
+}
+#log-content {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    font-size: 1.1rem;
+    line-height: 1.4;
+    padding-bottom: 20px;
+}
+.log-message { margin-bottom: 10px; opacity: 0; animation: fadeIn 0.3s forwards; }
+@keyframes fadeIn { to { opacity: 1; }}
