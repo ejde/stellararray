@@ -337,14 +337,15 @@ const STEPS = [
         title: "THE BIG PICTURE",
         phase: "OVERVIEW",
         explanation: `
-            <p>The Stellar Array is a <strong>1946 vacuum-tube computer</strong> designed for one job: process a 15×15 grid of numbers all at once.</p>
-            <div class="key-point"><strong>Why it's special:</strong> No CPU, no RAM, no software. Just 700 vacuum tubes hard-wired to read punched tape, do math in parallel, and light up Nixie tubes.</div>
+            <p>The Stellar Array is a <strong>1946 vacuum-tube computer</strong> designed for one job: process a 15×15 grid of numbers.</p>
+            <div class="key-point"><strong>Why it's special:</strong> No CPU, no RAM, no software. Just 700 vacuum tubes hard-wired to read punched tape, do math, and light up Nixie tubes.</div>
             <p><strong>The problem:</strong> You have 225 numbers arriving on tape. You need to compare each against a stored baseline and flag any that exceed a threshold.</p>
-            <p><strong>The solution:</strong> Strip the grid across 3 parallel calculators. Each handles 5 rows (75 cells). They all work simultaneously — 3× faster than a single processor.</p>
+            <p><strong>The solution:</strong> <em>Striping</em> — split the 15×15 grid across 3 independent calculators (5 rows each). This eliminates the need for a central crossbar switch (would cost ~1,300 tubes). The row number <em>is</em> the route.</p>
+            <p><strong>Important:</strong> The tape is sequential. Only ONE calculator runs at a time. Striping saves <em>hardware</em>, not speed. The machine is I/O-bound (tape at 100 bits/sec = 100ms/value, compute takes 4ms).</p>
             <ul>
                 <li><strong>Input:</strong> Punched tape at 100 bits/sec (~18 sec per block)</li>
                 <li><strong>Memory:</strong> 464 flip-flops (3,712 bits) holding the 15×15 baseline grid</li>
-                <li><strong>Compute:</strong> 3 calculators × 166 tubes each, doing subtraction in ~4ms</li>
+                <li><strong>Compute:</strong> 3 calculators × 166 tubes each, subtraction in ~4ms</li>
                 <li><strong>Aggregate:</strong> Calculator 3 (200 tubes) scans 225 thyratrons in ~22 sec</li>
                 <li><strong>Output:</strong> Nixie tubes (instant) or punched cards</li>
             </ul>
@@ -385,36 +386,77 @@ const STEPS = [
     {
         id: "latch",
         number: "04",
-        title: "STEP 3: LATCH INTO MEMORY GRID",
+        title: "STEP 3: LATCH INTO MEMORY GRID (WHY THE GRID EXISTS)",
         phase: "PHASE 1 — INGEST",
         explanation: `
             <p>The routed value goes two places at once:</p>
             <ol>
-                <li><strong>Calculator's register bank</strong> — 38 registers per calculator (8 bits each, dual-triode tubes)</li>
-                <li><strong>Flip-Flop Grid</strong> — 15×15 array of 464 flip-flops (each bit = 2 tubes)</li>
+                <li><strong>Calculator's register bank</strong> — 38 registers per calculator (8 bits each). <em>Temporary</em> — a rotating buffer that overwrites itself.</li>
+                <li><strong>Flip-Flop Grid</strong> — 15×15 array of 464 flip-flops. <em>Permanent</em> — one dedicated cell per coordinate.</li>
             </ol>
-            <div class="key-point"><strong>Block A is now permanent.</strong> It stays in the grid until power-off or deliberate overwrite. This is the "memory" — no refresh needed, flip-flops hold state indefinitely.</div>
-            <p>Each cell maps: <code>row = index ÷ 15</code>, <code>col = index % 15</code>. Index 0 → [0,0], Index 14 → [0,14], Index 15 → [1,0].</p>
-            <p>After 225 values (and ~18 seconds of tape), the entire 15×15 baseline grid is loaded.</p>
+            
+            <div class="key-point"><strong>The capacity problem:</strong> Each calculator owns 75 grid cells (5 rows × 15 cols) but only has 38 registers. Registers cycle every 38 values (<code>idx % 38</code>). By the end of Phase 1, each register has been overwritten ~2×. The first baseline values are GONE from registers.</div>
+            
+            <p><strong>Concrete example — Calculator 1 (indices 75–149):</strong></p>
+            <table style="width:100%; border-collapse:collapse; font-family:'Courier Prime',monospace; font-size:0.8rem; margin:16px 0;">
+                <tr style="border-bottom:1px solid #333;"><th style="padding:8px;color:var(--accent);">Moment</th><th style="padding:8px;color:var(--accent);">Register 37 holds</th></tr>
+                <tr><td style="padding:8px;">Index 75 arrives</td><td style="padding:8px;">Baseline[5,0] → written to Grid[5,0]</td></tr>
+                <tr><td style="padding:8px;">Index 113 arrives</td><td style="padding:8px;">Baseline[7,8] → **overwrites** Reg 37</td></tr>
+                <tr><td style="padding:8px;">Phase 1 ends</td><td style="padding:8px;">Reg 37 = Baseline[10,1] (last write)</td></tr>
+                <tr><td style="padding:8px;color:var(--danger);">Phase 2: Index 75 arrives</td><td style="padding:8px;color:var(--danger);">Need Baseline[5,0] — <strong>GONE from register</strong></td></tr>
+            </table>
+            
+            <p><strong>Mapping:</strong></p>
+            <ul>
+                <li><code>row = index ÷ 15</code>, <code>col = index % 15</code> → unique grid cell [row,col] (225 cells, never collides)</li>
+                <li><code>reg_id = index % 38</code> → calculator register (38 slots, cycles/reused)</li>
+            </ul>
+            
+            <div class="key-point"><strong>Why not 75 registers per calculator?</strong> 75 regs × 16 tubes = 1,200 tubes/calculator. ×3 = 3,600 tubes — 5× the 700-tube budget. The flip-flop grid (2 tubes/bit × 225 × 8 = 3,600 tubes) costs the same but gives random access + thyratron anchors + shared access for Aggregator.</div>
+            
+            <p><strong>After 225 values:</strong> All 225 grid cells filled permanently. Registers have cycled ~6× each — only the last 38 values per calculator remain in registers.</p>
         `,
         visual: "grid-fill"
     },
-    {
+{
         id: "phase2-start",
         number: "05",
-        title: "STEP 4: BLOCK B — STREAMING COMPUTE",
+        title: "STEP 4: BLOCK B — STREAMING COMPUTE (REGISTER IS NOW BIDIRECTIONAL)",
         phase: "PHASE 2 — COMPUTE",
         explanation: `
-            <p>Now Block B feeds in. <strong>Critical difference:</strong> Block B is <em>never stored</em>. Each value is read, subtracted from the memorized baseline, and discarded.</p>
-            <div class="key-point"><strong>This is stream processing.</strong> The tape moves at 100 bits/sec. The machine must compute the difference <em>before the next value arrives</em>. No buffering, no second chances.</div>
-            <p>For each incoming value:</p>
+            <p><strong>The critical difference from Phase 1:</strong> In Phase 1, registers were <strong>write-only</strong> (staging buffer → Grid). In Phase 2, registers are <strong>bidirectional</strong> — they hold the streaming value AND receive the fetched baseline.</p>
+            
+            <table style="width:100%; border-collapse:collapse; font-family:'Courier Prime',monospace; font-size:0.8rem; margin:16px 0;">
+                <tr style="border-bottom:1px solid #333;">
+                    <th style="text-align:left;color:var(--accent);padding:8px;">Phase</th>
+                    <th style="text-align:left;color:var(--accent);padding:8px;">Tape → Register</th>
+                    <th style="text-align:left;color:var(--accent);padding:8px;">Register → Grid</th>
+                    <th style="text-align:left;color:var(--accent);padding:8px;">Grid → Register</th>
+                </tr>
+                <tr>
+                    <td style="padding:8px;color:var(--calc0);">Phase 1 (Block A)</td>
+                    <td style="padding:8px;">YES (baseline)</td>
+                    <td style="padding:8px;">YES (write)</td>
+                    <td style="padding:8px;">NO</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px;color:var(--calc2);">Phase 2 (Block B)</td>
+                    <td style="padding:8px;">YES (current)</td>
+                    <td style="padding:8px;">NO (never stored)</td>
+                    <td style="padding:8px;">YES (read baseline)</td>
+                </tr>
+            </table>
+            
+            <p><strong>Phase 2 data flow per value:</strong></p>
             <ol>
-                <li>Router sends to correct calculator (same striping logic)</li>
-                <li>Calculator fetches baseline from grid at [row, col]</li>
-                <li>Vacuum-tube subtractor computes: <code>current - baseline</code> in ~4ms</li>
-                <li>Result compared against hard-wired threshold</li>
+                <li>Tape → Router → Calculator Register <code>[idx%38]</code> (holds <em>current</em> value)</li>
+                <li>Calculator reads baseline from <strong>Flip-Flop Grid[row,col]</strong> into <strong>another register slot</strong></li>
+                <li>Subtractor: <code>Register(current) - Register(baseline)</code> in ~4ms</li>
+                <li>Result compared to threshold</li>
             </ol>
-            <p>All 3 calculators work in parallel on their 5-row stripes. Throughput: ~75 values/sec per calculator.</p>
+            <div class="key-point"><strong>Why the Grid is essential:</strong> The baseline for Index 75 was written to Grid[5,0] in Phase 1, but Calculator 1's register 37 has been overwritten twice since then (by indices 113 and 151). Only the Grid still has it.</div>
+            
+            <p><strong>Routing is identical in both phases</strong> — row number determines calculator. Index 75 = Row 5 = Calculator 1 in BOTH phases. Striping saves <em>tubes</em> (no crossbar), not time. Machine is I/O-bound: compute 4ms, idle 96ms waiting for tape.</p>
         `,
         visual: "compute"
     },
