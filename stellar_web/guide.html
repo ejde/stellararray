@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Array — How It Works: A Step-by-Step Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #111;
+            --border: #222;
+            --text: #e0e0e0;
+            --muted: #666;
+            --accent: #00ff41;
+            --accent-dim: #00cc33;
+            --warn: #ffcc00;
+            --info: #4da6ff;
+            --danger: #ff4444;
+            --calc0: #4da6ff;
+            --calc1: #00ff41;
+            --calc2: #ffcc00;
+            --agg: #ff00ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+        h1, h2, h3, .mono { font-family: 'Courier Prime', monospace; }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px 80px; }
+        
+        /* Header */
+        header { text-align: center; margin-bottom: 60px; padding-bottom: 40px; border-bottom: 1px solid var(--border); }
+        header h1 { color: var(--accent); font-size: clamp(2rem, 5vw, 3rem); letter-spacing: 4px; margin-bottom: 12px; }
+        header p { color: var(--muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+        
+        /* Progress */
+        .progress { position: sticky; top: 0; background: rgba(10,10,10,0.95); backdrop-filter: blur(10px); 
+            border-bottom: 1px solid var(--border); padding: 12px 0; margin: 0 -20px 40px; z-index: 100; }
+        .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--calc0), var(--calc1), var(--calc2), var(--agg)); 
+            width: 0%; transition: width 0.4s ease; }
+        .progress-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.7rem; color: var(--muted); }
+        .progress-labels span.active { color: var(--accent); font-weight: 600; }
+        
+        /* Step Cards */
+        .step { background: var(--card); border: 1px solid var(--border); border-radius: 12px; 
+            padding: 40px; margin-bottom: 30px; opacity: 0; transform: translateY(20px); 
+            animation: fadeUp 0.6s ease forwards; }
+        .step:nth-child(1) { animation-delay: 0.1s; }
+        .step:nth-child(2) { animation-delay: 0.2s; }
+        .step:nth-child(3) { animation-delay: 0.3s; }
+        .step:nth-child(4) { animation-delay: 0.4s; }
+        .step:nth-child(5) { animation-delay: 0.5s; }
+        .step:nth-child(6) { animation-delay: 0.6s; }
+        .step:nth-child(7) { animation-delay: 0.7s; }
+        .step:nth-child(8) { animation-delay: 0.8s; }
+        @keyframes fadeUp { to { opacity: 1; transform: none; } }
+        
+        .step-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+        .step-number { background: var(--accent); color: #000; font-weight: 700; padding: 8px 16px; 
+            border-radius: 6px; font-size: 1rem; min-width: 50px; text-align: center; }
+        .step-title { color: var(--warn); font-size: 1.3rem; letter-spacing: 1px; }
+        .step-phase { background: #001100; border: 1px solid var(--accent); color: var(--accent); 
+            padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; margin-left: auto; }
+        
+        .step-content { display: grid; grid-template-columns: 1fr; gap: 24px; }
+        @media (min-width: 700px) { .step-content { grid-template-columns: 1.2fr 1fr; } }
+        
+        .explanation h3 { color: var(--text); margin-bottom: 12px; font-size: 1rem; }
+        .explanation p { color: var(--muted); margin-bottom: 12px; }
+        .explanation .key-point { background: #001100; border-left: 3px solid var(--accent); 
+            padding: 12px 16px; margin: 16px 0; font-size: 0.9rem; }
+        .explanation .key-point strong { color: var(--accent); }
+        .explanation ul { margin: 12px 0 12px 24px; color: var(--muted); }
+        .explanation li { margin: 6px 0; }
+        .explanation code { background: #000; color: var(--calc1); padding: 2px 6px; border-radius: 3px; font-size: 0.85em; }
+        
+        /* Visual Panel */
+        .visual-panel { background: #000; border: 1px solid var(--border); border-radius: 8px; 
+            padding: 20px; min-height: 200px; position: relative; }
+        .visual-panel h4 { color: var(--info); font-size: 0.8rem; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Tape Visualization */
+        .tape-viz { display: flex; flex-direction: column; gap: 4px; font-family: 'Courier Prime', monospace; font-size: 0.75rem; }
+        .tape-block { padding: 12px; background: #111; border: 1px solid #333; border-radius: 4px; }
+        .tape-block-label { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .tape-row { display: flex; gap: 4px; flex-wrap: wrap; }
+        .tape-cell { background: #000; border: 1px solid #222; padding: 4px 8px; min-width: 50px; text-align: center; color: #888; }
+        .tape-cell.active { background: #1a2a1a; border-color: var(--accent); color: var(--accent); font-weight: bold; }
+        .tape-cell.baseline { color: var(--calc0); }
+        .tape-cell.current { color: var(--calc2); }
+        .tape-arrow { text-align: center; color: var(--accent); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+        
+        /* Architecture Diagram */
+        .arch-flow { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+        .arch-layer { width: 100%; background: #111; border: 1px solid #222; border-radius: 6px; padding: 16px; text-align: center; transition: all 0.3s; }
+        .arch-layer.active { border-color: var(--accent); box-shadow: 0 0 20px rgba(0,255,65,0.1); background: #0a1a0a; }
+        .arch-layer-label { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .arch-layer-content { font-family: 'Courier Prime', monospace; font-size: 0.8rem; color: var(--text); }
+        .arch-layer .calc-stripe { display: inline-block; background: #000; border: 1px solid #333; padding: 4px 12px; margin: 4px; border-radius: 4px; font-size: 0.7rem; }
+        .arch-layer .stripe-0 { border-color: var(--calc0); color: var(--calc0); }
+        .arch-layer .stripe-1 { border-color: var(--calc1); color: var(--calc1); }
+        .arch-layer .stripe-2 { border-color: var(--calc2); color: var(--calc2); }
+        .arch-layer .aggregator { border-color: var(--agg); color: var(--agg); background: #1a001a; }
+        .arch-arrow { color: var(--accent); font-size: 1.5rem; animation: bounce 1s infinite; }
+        @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+        
+        /* Grid Visualization */
+        .grid-viz { display: grid; grid-template-columns: repeat(15, 1fr); gap: 2px; background: #000; padding: 8px; border-radius: 4px; }
+        .grid-cell { aspect-ratio: 1; background: #111; border: 1px solid #222; display: flex; align-items: center; justify-content: center; font-family: 'Courier Prime', monospace; font-size: 0.6rem; color: #444; transition: all 0.2s; }
+        .grid-cell.filled { background: #1a1a1a; color: #888; border-color: #333; }
+        .grid-cell.computing { background: var(--warn); color: #000; font-weight: bold; transform: scale(1.1); z-index: 1; }
+        .grid-cell.signal { background: #003300; color: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 8px rgba(0,255,65,0.4); }
+        .grid-row-label { grid-column: 1 / -1; color: var(--muted); font-size: 0.6rem; padding: 4px; text-align: center; }
+        .grid-stripe-0 .grid-cell.filled { border-left: 2px solid var(--calc0); }
+        .grid-stripe-1 .grid-cell.filled { border-left: 2px solid var(--calc1); }
+        .grid-stripe-2 .grid-cell.filled { border-left: 2px solid var(--calc2); }
+        
+        /* Calculator Registers */
+        .regs-viz { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; font-family: monospace; font-size: 0.65rem; }
+        .reg-cell { background: #000; border: 1px solid #111; padding: 4px; text-align: center; color: #333; }
+        .reg-cell.active { background: var(--accent); color: #000; border-color: var(--accent); }
+        .regs-header { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .calc-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; color: #000; }
+        .calc-badge.c0 { background: var(--calc0); }
+        .calc-badge.c1 { background: var(--calc1); }
+        .calc-badge.c2 { background: var(--calc2); }
+        .calc-badge.agg { background: var(--agg); }
+        
+        /* Thyratron Panel */
+        .thyratron-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 2px; }
+        .thyratron { aspect-ratio: 1; background: #111; border: 1px solid #222; border-radius: 50%; transition: all 0.2s; }
+        .thyratron.fired { background: var(--agg); border-color: var(--agg); box-shadow: 0 0 8px var(--agg); }
+        
+        /* Output */
+        .output-viz { background: #000; border: 1px solid #222; border-radius: 4px; padding: 16px; font-family: 'Courier Prime', monospace; font-size: 0.8rem; min-height: 100px; }
+        .output-line { padding: 4px 0; border-bottom: 1px solid #111; color: #666; }
+        .output-line.buy { color: var(--accent); font-weight: bold; }
+        .output-line.neutron { color: var(--calc0); }
+        .output-line.crit { color: var(--calc1); }
+        .output-line.art { color: var(--agg); }
+        
+        /* Code snippet */
+        .code-block { background: #000; border: 1px solid #222; border-radius: 6px; padding: 16px; font-family: 'Courier Prime', monospace; font-size: 0.75rem; overflow-x: auto; color: #888; }
+        .code-block .kw { color: var(--info); }
+        .code-block .fn { color: var(--calc1); }
+        .code-block .str { color: var(--calc2); }
+        .code-block .num { color: var(--warn); }
+        .code-block .comment { color: #555; }
+        
+        /* Navigation */
+        .nav { display: flex; justify-content: space-between; margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border); }
+        .nav-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 14px 28px; border-radius: 8px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+        .nav-btn:hover { border-color: var(--accent); background: #1a1a1a; }
+        .nav-btn.primary { background: var(--accent); color: #000; border-color: var(--accent); }
+        .nav-btn.primary:hover { background: var(--accent-dim); }
+        .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        /* Mode Selector */
+        .mode-selector { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px; }
+        .mode-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 12px 24px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 140px; }
+        .mode-btn:hover { border-color: var(--accent); }
+        .mode-btn.active { border-color: var(--accent); background: #0a1a0a; }
+        .mode-btn .icon { font-size: 1.5rem; }
+        .mode-btn .label { font-family: 'Courier Prime', monospace; font-size: 0.75rem; color: var(--muted); }
+        .mode-btn.active .label { color: var(--accent); }
+        
+        /* Legend */
+        .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-box { width: 14px; height: 14px; border: 1px solid #333; border-radius: 2px; }
+        .legend-box.calc0 { border-color: var(--calc0); background: rgba(77,166,255,0.1); }
+        .legend-box.calc1 { border-color: var(--calc1); background: rgba(0,255,65,0.1); }
+        .legend-box.calc2 { border-color: var(--calc2); background: rgba(255,204,0,0.1); }
+        .legend-box.agg { border-color: var(--agg); background: rgba(255,0,255,0.1); }
+        .legend-box.grid { background: #1a1a1a; border-color: #333; }
+        .legend-box.signal { background: #003300; border-color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="progress" id="progress">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-labels" id="progressLabels"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>STELLAR ARRAY</h1>
+            <p>How a 1946 vacuum-tube computer processes a 15×15 grid using striped parallelism — explained step by step</p>
+        </header>
+        
+        <div class="mode-selector" id="modeSelector">
+            <button class="mode-btn active" data-mode="trading"><span class="icon">📈</span><span class="label">Trading Arbitrage</span></button>
+            <button class="mode-btn" data-mode="aec"><span class="icon">☢️</span><span class="label">AEC Neutron Flux</span></button>
+            <button class="mode-btn" data-mode="cea"><span class="icon">🏭</span><span class="label">CEA Criticality</span></button>
+            <button class="mode-btn" data-mode="art"><span class="icon">🎨</span><span class="label">Fractal Art</span></button>
+        </div>
+        
+        <!-- Steps will be injected here -->
+        <div id="steps"></div>
+        
+        <nav class="nav">
+            <button class="nav-btn" id="prevBtn" disabled>← Previous</button>
+            <button class="nav-btn primary" id="nextBtn">Next →</button>
+        </nav>
+    </div>
+
+<script>
+// ============================================
+// COMPUTATION MODES WITH PRE-COMPUTED EXAMPLES
+// ============================================
+const MODES = {
+    trading: {
+        name: "Trading Arbitrage",
+        icon: "📈",
+        description: "Detect price spreads between NYSE and Curb Exchange. Buy when spread > 5.",
+        // Pre-generated example data (deterministic for tutorial)
+        tapeA: [
+            {idx:0, val:42, label:"A-000"}, {idx:1, val:38, label:"A-001"}, {idx:2, val:45, label:"A-002"},
+            {idx:3, val:41, label:"A-003"}, {idx:4, val:39, label:"A-004"}, {idx:5, val:44, label:"A-005"},
+            {idx:6, val:40, label:"A-006"}, {idx:7, val:43, label:"A-007"}, {idx:8, val:37, label:"A-008"},
+            {idx:9, val:46, label:"A-009"}, {idx:10, val:42, label:"A-010"}, {idx:11, val:39, label:"A-011"},
+            {idx:12, val:44, label:"A-012"}, {idx:13, val:40, label:"A-013"}, {idx:14, val:45, label:"A-014"},
+            {idx:15, val:38, label:"A-015"}, {idx:16, val:41, label:"A-016"}, {idx:17, val:43, label:"A-017"},
+            {idx:18, val:39, label:"A-018"}, {idx:19, val:44, label:"A-019"}, {idx:20, val:37, label:"A-020"},
+            {idx:21, val:46, label:"A-021"}, {idx:22, val:42, label:"A-022"}, {idx:23, val:39, label:"A-023"},
+            {idx:24, val:44, label:"A-024"}, {idx:25, val:40, label:"A-025"}, {idx:26, val:45, label:"A-026"},
+            {idx:27, val:38, label:"A-027"}, {idx:28, val:41, label:"A-028"}, {idx:29, val:43, label:"A-029"},
+            // ... abbreviated for brevity, we'll show key ones
+        ],
+        tapeB: [
+            {idx:0, val:54, label:"B-000", spread:12},  // BUY signal!
+            {idx:1, val:39, label:"B-001", spread:1},
+            {idx:2, val:46, label:"B-002", spread:1},
+            {idx:3, val:42, label:"B-003", spread:1},
+            {idx:4, val:40, label:"B-004", spread:1},
+            {idx:5, val:55, label:"B-005", spread:11}, // BUY signal!
+            {idx:6, val:41, label:"B-006", spread:1},
+            {idx:7, val:44, label:"B-007", spread:1},
+            {idx:8, val:38, label:"B-008", spread:1},
+            {idx:9, val:58, label:"B-009", spread:12}, // BUY signal!
+            {idx:10, val:43, label:"B-010", spread:1},
+            {idx:11, val:40, label:"B-011", spread:1},
+            {idx:12, val:45, label:"B-012", spread:1},
+            {idx:13, val:41, label:"B-013", spread:1},
+            {idx:14, val:52, label:"B-014", spread:7},  // BUY signal!
+        ],
+        compute: (curr, base) => curr - base,
+        threshold: 5,
+        signalLabel: "BUY",
+        signalClass: "buy",
+        sampleIdx: 0,  // We'll focus on index 0 (spread +12)
+    },
+    aec: {
+        name: "AEC Neutron Flux",
+        icon: "☢️",
+        description: "Calculate neutron multiplication factor k for reactor design at Los Alamos.",
+        tapeA: [
+            {idx:0, val:85, label:"A-000"}, {idx:1, val:82, label:"A-001"}, {idx:2, val:88, label:"A-002"},
+            {idx:3, val:84, label:"A-003"}, {idx:4, val:86, label:"A-004"}, {idx:5, val:83, label:"A-005"},
+        ],
+        tapeB: [
+            {idx:0, val:98, label:"B-000", spread:13},  // FLUX signal!
+            {idx:1, val:83, label:"B-001", spread:1},
+            {idx:2, val:89, label:"B-002", spread:1},
+            {idx:3, val:85, label:"B-003", spread:1},
+            {idx:4, val:87, label:"B-004", spread:1},
+            {idx:5, val:95, label:"B-005", spread:12},  // FLUX signal!
+        ],
+        compute: (curr, base) => curr - base,
+        threshold: 10,
+        signalLabel: "FLUX",
+        signalClass: "neutron",
+        sampleIdx: 0,
+    },
+    cea: {
+        name: "CEA Reactor Criticality",
+        icon: "🏭",
+        description: "Monitor temperature/pressure grid for reactor safety margins.",
+        tapeA: [
+            {idx:0, val:450, label:"A-000"}, {idx:1, val:445, label:"A-001"}, {idx:2, val:452, label:"A-002"},
+            {idx:3, val:448, label:"A-003"}, {idx:4, val:451, label:"A-004"}, {idx:5, val:447, label:"A-005"},
+        ],
+        tapeB: [
+            {idx:0, val:470, label:"B-000", spread:20},  // CRIT signal!
+            {idx:1, val:446, label:"B-001", spread:1},
+            {idx:2, val:453, label:"B-002", spread:1},
+            {idx:3, val:449, label:"B-003", spread:1},
+            {idx:4, val:452, label:"B-004", spread:1},
+            {idx:5, val:468, label:"B-005", spread:21},  // CRIT signal!
+        ],
+        compute: (curr, base) => Math.abs(curr - base),
+        threshold: 15,
+        signalLabel: "CRIT",
+        signalClass: "crit",
+        sampleIdx: 0,
+    },
+    art: {
+        name: "Fractal Art Generation",
+        icon: "🎨",
+        description: "Generate sine-wave interference patterns for MoMA exhibition.",
+        tapeA: [
+            {idx:0, val:45, label:"A-000"}, {idx:1, val:90, label:"A-001"}, {idx:2, val:135, label:"A-002"},
+            {idx:3, val:180, label:"A-003"}, {idx:4, val:225, label:"A-004"}, {idx:5, val:270, label:"A-005"},
+        ],
+        tapeB: [
+            {idx:0, val:135, label:"B-000", spread:90},   // DRAW signal!
+            {idx:1, val:95, label:"B-001", spread:5},
+            {idx:2, val:140, label:"B-002", spread:5},
+            {idx:3, val:185, label:"B-003", spread:5},
+            {idx:4, val:230, label:"B-004", spread:5},
+            {idx:5, val:360, label:"B-005", spread:90},   // DRAW signal!
+        ],
+        compute: (curr, base) => Math.sin((curr - base) * Math.PI / 180) * 180,
+        threshold: 90,
+        signalLabel: "DRAW",
+        signalClass: "art",
+        sampleIdx: 0,
+    }
+};
+
+// ============================================
+// STEP DEFINITIONS
+// ============================================
+const STEPS = [
+    {
+        id: "overview",
+        number: "01",
+        title: "THE BIG PICTURE",
+        phase: "OVERVIEW",
+        explanation: `
+            <p>The Stellar Array is a <strong>1946 vacuum-tube computer</strong> designed for one job: process a 15×15 grid of numbers all at once.</p>
+            <div class="key-point"><strong>Why it's special:</strong> No CPU, no RAM, no software. Just 700 vacuum tubes hard-wired to read punched tape, do math in parallel, and light up Nixie tubes.</div>
+            <p><strong>The problem:</strong> You have 225 numbers arriving on tape. You need to compare each against a stored baseline and flag any that exceed a threshold.</p>
+            <p><strong>The solution:</strong> Strip the grid across 3 parallel calculators. Each handles 5 rows (75 cells). They all work simultaneously — 3× faster than a single processor.</p>
+            <ul>
+                <li><strong>Input:</strong> Punched tape at 100 bits/sec (~18 sec per block)</li>
+                <li><strong>Memory:</strong> 464 flip-flops (3,712 bits) holding the 15×15 baseline grid</li>
+                <li><strong>Compute:</strong> 3 calculators × 166 tubes each, doing subtraction in ~4ms</li>
+                <li><strong>Aggregate:</strong> Calculator 3 (200 tubes) scans 225 thyratrons in ~22 sec</li>
+                <li><strong>Output:</strong> Nixie tubes (instant) or punched cards</li>
+            </ul>
+        `,
+        visual: "architecture"
+    },
+    {
+        id: "tape",
+        number: "02",
+        title: "STEP 1: THE PUNCHED TAPE",
+        phase: "PHASE 1 — INGEST",
+        explanation: `
+            <p>The machine has <strong>no keyboard, no disk, no network</strong>. Data enters only via punched paper tape.</p>
+            <div class="key-point"><strong>Two blocks:</strong> Block A (Baseline) loads first and gets memorized. Block B (Current) streams through and is <em>immediately subtracted</em> from memory — never stored.</div>
+            <p>Each block = 225 values × 8 bits = 1,800 bits. At 100 bits/sec, reading takes ~18 seconds.</p>
+            <p><strong>Tape format:</strong> Each row has a label (A-000, A-001...) and an 8-bit value (0-255).</p>
+            <p>For our <strong>${MODES.trading.name}</strong> example: Block A holds opening prices. Block B holds current prices. We're hunting for spreads > 5.</p>
+        `,
+        visual: "tape"
+    },
+    {
+        id: "routing",
+        number: "03",
+        title: "STEP 2: THE STRIPING ROUTER",
+        phase: "PHASE 1 — INGEST",
+        explanation: `
+            <p>When a value arrives, the <strong>Striping Router</strong> looks at its grid row and activates <strong>exactly one calculator</strong>:</p>
+            <ul>
+                <li>Rows 0–4 → <span class="calc-badge c0">CALC 0</span> (166 tubes, 38 registers)</li>
+                <li>Rows 5–9 → <span class="calc-badge c1">CALC 1</span> (166 tubes, 38 registers)</li>
+                <li>Rows 10–14 → <span class="calc-badge c2">CALC 2</span> (166 tubes, 38 registers)</li>
+            </ul>
+            <div class="key-point"><strong>Why this matters:</strong> A monolithic design would need 2,000+ tubes just for switching. Striping uses 0 switching tubes — the row number <em>is</em> the route.</div>
+            <p>Calculators 0, 1, 2 are completely independent. They don't share registers, they don't talk to each other. This is <strong>data parallelism</strong> — same operation, different data, simultaneously.</p>
+        `,
+        visual: "routing"
+    },
+    {
+        id: "latch",
+        number: "04",
+        title: "STEP 3: LATCH INTO MEMORY GRID",
+        phase: "PHASE 1 — INGEST",
+        explanation: `
+            <p>The routed value goes two places at once:</p>
+            <ol>
+                <li><strong>Calculator's register bank</strong> — 38 registers per calculator (8 bits each, dual-triode tubes)</li>
+                <li><strong>Flip-Flop Grid</strong> — 15×15 array of 464 flip-flops (each bit = 2 tubes)</li>
+            </ol>
+            <div class="key-point"><strong>Block A is now permanent.</strong> It stays in the grid until power-off or deliberate overwrite. This is the "memory" — no refresh needed, flip-flops hold state indefinitely.</div>
+            <p>Each cell maps: <code>row = index ÷ 15</code>, <code>col = index % 15</code>. Index 0 → [0,0], Index 14 → [0,14], Index 15 → [1,0].</p>
+            <p>After 225 values (and ~18 seconds of tape), the entire 15×15 baseline grid is loaded.</p>
+        `,
+        visual: "grid-fill"
+    },
+    {
+        id: "phase2-start",
+        number: "05",
+        title: "STEP 4: BLOCK B — STREAMING COMPUTE",
+        phase: "PHASE 2 — COMPUTE",
+        explanation: `
+            <p>Now Block B feeds in. <strong>Critical difference:</strong> Block B is <em>never stored</em>. Each value is read, subtracted from the memorized baseline, and discarded.</p>
+            <div class="key-point"><strong>This is stream processing.</strong> The tape moves at 100 bits/sec. The machine must compute the difference <em>before the next value arrives</em>. No buffering, no second chances.</div>
+            <p>For each incoming value:</p>
+            <ol>
+                <li>Router sends to correct calculator (same striping logic)</li>
+                <li>Calculator fetches baseline from grid at [row, col]</li>
+                <li>Vacuum-tube subtractor computes: <code>current - baseline</code> in ~4ms</li>
+                <li>Result compared against hard-wired threshold</li>
+            </ol>
+            <p>All 3 calculators work in parallel on their 5-row stripes. Throughput: ~75 values/sec per calculator.</p>
+        `,
+        visual: "compute"
+    },
+    {
+        id: "decision",
+        number: "06",
+        title: "STEP 5: THRESHOLD & THYRATRON",
+        phase: "PHASE 2 — DECIDE",
+        explanation: `
+            <p>Each calculator has a <strong>hard-wired threshold</strong> (no software, just tube bias voltages):</p>
+            <ul>
+                <li>Trading: spread > <code>5</code></li>
+                <li>AEC Neutron: flux > <code>10</code></li>
+                <li>CEA Criticality: deviation > <code>15</code></li>
+                <li>Art: angle > <code>90°</code></li>
+            </ul>
+            <div class="key-point"><strong>If exceeded:</strong> A <em>thyratron</em> (gas-filled switch tube) at that grid node <strong>FIRES</strong> and latches ON. No CPU interrupt, no polling — the hardware just fires.</div>
+            <p>The thyratron <strong>stays latched</strong> until the Aggregator sweeps it. This is the "signal" — a physical switch closing in the grid.</p>
+            <p><strong>Our example:</strong> At index 0, baseline=42, current=54, spread=+12. 12 > 5 → <span class="calc-badge c0" style="font-size:0.7rem;">THYRATRON FIRES at [0,0]</span></p>
+        `,
+        visual: "thyratron"
+    },
+    {
+        id: "aggregator",
+        number: "07",
+        title: "STEP 6: AGGREGATOR (CALCULATOR 3)",
+        phase: "PHASE 2 — AGGREGATE",
+        explanation: `
+            <p>Calculators 0, 1, 2 are "dumb" — they only know their 5 rows. They can't see the full picture.</p>
+            <p><strong>Calculator 3 (200 tubes)</strong> is the Aggregator. Its job: scan all 225 thyratrons sequentially.</p>
+            <div class="key-point"><strong>The sweep:</strong> 225 thyratrons × ~100ms each = ~22 seconds for a full scan. When it finds a fired thyratron, it reads the coordinates, formats the output, and sends it to the Nixie display.</div>
+            <p>This is why the Aggregator has more tubes (200 vs 166) — it needs sequencing logic, coordinate decoding, and output formatting.</p>
+            <p><strong>Output example:</strong> <code>[0,0] BUY: +12</code> appears on Nixie tubes instantly. Or punched on a card for logging.</p>
+        `,
+        visual: "aggregator"
+    },
+    {
+        id: "timing",
+        number: "08",
+        title: "STEP 7: TIMING SUMMARY",
+        phase: "TIMING ANALYSIS",
+        explanation: `
+            <p>Every operation has a physical cost in vacuum-tube time:</p>
+            <table style="width:100%; border-collapse:collapse; font-family:'Courier Prime',monospace; font-size:0.8rem;">
+                <tr style="border-bottom:1px solid #333;"><th style="text-align:left;color:var(--accent);padding:8px;">Operation</th><th style="text-align:right;color:var(--accent);padding:8px;">Time</th><th style="text-align:left;color:var(--muted);padding:8px;">Notes</th></tr>
+                <tr><td style="padding:8px;">Tape read (1 value)</td><td style="text-align:right;padding:8px;">100 ms</td><td style="padding:8px;">Mechanical + photoelectric</td></tr>
+                <tr><td style="padding:8px;">Route + register latch</td><td style="text-align:right;padding:8px;">5 ms</td><td style="padding:8px;">Relay/thyratron settling</td></tr>
+                <tr><td style="padding:8px;">Subtraction (tube adder)</td><td style="text-align:right;padding:8px;">4 ms</td><td style="padding:8px;">Parallel across 3 calcs</td></tr>
+                <tr><td style="padding:8px;">Grid write</td><td style="text-align:right;padding:8px;">2 ms</td><td style="padding:8px;">Flip-flop set</td></tr>
+                <tr><td style="padding:8px;">Threshold compare</td><td style="text-align:right;padding:8px;">1 ms</td><td style="padding:8px;">Hard-wired bias</td></tr>
+                <tr><td style="padding:8px;">Aggregator sweep (full)</td><td style="text-align:right;padding:8px;">22 sec</td><td style="padding:8px;">225 × 100ms</td></tr>
+                <tr style="border-top:2px solid var(--accent);"><td style="padding:8px;"><strong>Total (Block A + B)</strong></td><td style="text-align:right;padding:8px;"><strong>~72 sec</strong></td><td style="padding:8px;"><strong>Tape I/O dominates</strong></td></tr>
+            </table>
+            <p style="margin-top:16px;">The machine is <strong>I/O bound</strong>. The calculators sit idle most of the time, waiting for tape. This is why striping matters — it keeps all 3 calculators fed when data <em>does</em> arrive.</p>
+        `,
+        visual: "timing"
+    },
+    {
+        id: "modes",
+        number: "09",
+        title: "FOUR MODES, ONE ARCHITECTURE",
+        phase: "MODES",
+        explanation: `
+            <p>The same hardware runs four completely different computations by changing only:</p>
+            <ol>
+                <li><strong>Threshold value</strong> (hard-wired jumper)</li>
+                <li><strong>Output format</strong> (Nixie decode wiring)</li>
+                <li><strong>Tape data source</strong> (different physical tapes)</li>
+            </ol>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-top:16px;">
+                <div style="background:#0d0d0d;border:1px solid #222;padding:16px;border-radius:8px;">
+                    <div style="font-size:1.5rem;">📈</div>
+                    <strong style="color:var(--accent);">Trading</strong><br>
+                    <small style="color:var(--muted);">NYSE vs Curb prices<br>Threshold: spread > 5<br>Output: BUY coordinates</small>
+                </div>
+                <div style="background:#0d0d0d;border:1px solid #222;padding:16px;border-radius:8px;">
+                    <div style="font-size:1.5rem;">☢️</div>
+                    <strong style="color:var(--calc0);">AEC Neutron</strong><br>
+                    <small style="color:var(--muted);">Los Alamos reactor<br>Threshold: flux > 10<br>Output: k-factor</small>
+                </div>
+                <div style="background:#0d0d0d;border:1px solid #222;padding:16px;border-radius:8px;">
+                    <div style="font-size:1.5rem;">🏭</div>
+                    <strong style="color:var(--calc1);">CEA Criticality</strong><br>
+                    <small style="color:var(--muted);">Reactor temp/pressure<br>Threshold: dev > 15<br>Output: safety index</small>
+                </div>
+                <div style="background:#0d0d0d;border:1px solid #222;padding:16px;border-radius:8px;">
+                    <div style="font-size:1.5rem;">🎨</div>
+                    <strong style="color:var(--agg);">Fractal Art</strong><br>
+                    <small style="color:var(--muted);">MoMA exhibition<br>Threshold: angle > 90°<br>Output: plotter angles</small>
+                </div>
+            </div>
+            <p style="margin-top:16px;"><strong>No reprogramming.</strong> Just swap the tape reel and flip a few jumpers. The architecture <em>is</em> the program.</p>
+        `,
+        visual: "modes"
+    }
+];
+
+// ============================================
+// RENDERING
+// ============================================
+let currentMode = 'trading';
+let currentStep = 0;
+
+const stepsContainer = document.getElementById('steps');
+const progressFill = document.getElementById('progressFill');
+const progressLabels = document.getElementById('progressLabels');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const modeSelector = document.getElementById('modeSelector');
+
+function renderSteps() {
+    const mode = MODES[currentMode];
+    stepsContainer.innerHTML = STEPS.map((step, i) => `
+        <article class="step" id="step-${step.id}" data-index="${i}">
+            <header class="step-header">
+                <span class="step-number">${step.number}</span>
+                <h2 class="step-title">${step.title}</h2>
+                <span class="step-phase">${step.phase}</span>
+            </header>
+            <div class="step-content">
+                <div class="explanation">${step.explanation.replace(/\$\{MODES\.trading\.name\}/g, mode.name)}</div>
+                <div class="visual-panel" id="viz-${step.id}-${i}">${renderVisual(step.visual, mode, i)}</div>
+            </div>
+        </article>
+    `).join('');
+    
+    // Progress labels
+    progressLabels.innerHTML = STEPS.map((s, i) => 
+        `<span class="${i === 0 ? 'active' : ''}">${s.number}. ${s.title.split(' ').slice(0,3).join(' ')}</span>`
+    ).join('');
+}
+
+function renderVisual(type, mode, stepIndex) {
+    switch(type) {
+        case 'architecture':
+            return `
+                <h4>System Architecture</h4>
+                <div class="arch-flow">
+                    <div class="arch-layer"><div class="arch-layer-label">INPUT</div><div class="arch-layer-content">Punched Tape Reader → Block A (Baseline) → Block B (Streaming)</div></div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer"><div class="arch-layer-label">ROUTER</div><div class="arch-layer-content">Striping Router: Row 0-4→Calc0 | Row 5-9→Calc1 | Row 10-14→Calc2</div></div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer"><div class="arch-layer-label">CALCULATORS</div><div class="arch-layer-content">
+                        <span class="calc-stripe stripe-0">CALC 0 (Rows 0-4, 166 tubes)</span>
+                        <span class="calc-stripe stripe-1">CALC 1 (Rows 5-9, 166 tubes)</span>
+                        <span class="calc-stripe stripe-2">CALC 2 (Rows 10-14, 166 tubes)</span>
+                    </div></div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer"><div class="arch-layer-label">MEMORY</div><div class="arch-layer-content">15×15 Flip-Flop Grid (464 flip-flops, 3,712 bits)</div></div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer"><div class="arch-layer-label">AGGREGATOR</div><div class="arch-layer-content"><span class="calc-stripe aggregator">CALC 3 — Scans 225 thyratrons (~22 sec)</span></div></div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer"><div class="arch-layer-label">OUTPUT</div><div class="arch-layer-content">Nixie Tubes (instant) / Punched Cards</div></div>
+                </div>
+            `;
+        case 'tape':
+            return `
+                <h4>Block A (Baseline) — First 15 values</h4>
+                <div class="tape-viz">
+                    <div class="tape-block">
+                        <div class="tape-block-label">Block A — Opening Prices (memorized)</div>
+                        <div class="tape-row">
+                            ${mode.tapeA.slice(0,15).map((v,i)=>`<div class="tape-cell baseline ${i===0?'active':''}">${v.label}: ${v.val}</div>`).join('')}
+                        </div>
+                    </div>
+                    <div class="tape-arrow">▼ Tape advances ▼</div>
+                    <div class="tape-block">
+                        <div class="tape-block-label">Block B — Current Prices (streaming, NOT stored)</div>
+                        <div class="tape-row">
+                            ${mode.tapeB.slice(0,15).map((v,i)=>`<div class="tape-cell current ${i===0?'active':''}">${v.label}: ${v.val} (Δ${v.spread>=0?'+':''}${v.spread})</div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top:16px;padding:12px;background:#001100;border-left:3px solid var(--accent);font-size:0.8rem;">
+                    <strong>Key insight:</strong> Block B values are subtracted from Block A <em>on the fly</em>. The machine never "sees" Block B as a whole — it processes one value, discards it, moves to the next.
+                </div>
+            `;
+        case 'routing':
+            return `
+                <h4>Striping Router in Action</h4>
+                <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+                    <div style="background:#001100;border:1px solid var(--accent);padding:16px;border-radius:8px;text-align:center;">
+                        <div style="color:var(--accent);font-family:'Courier Prime';font-size:1.2rem;margin-bottom:8px;">Incoming: Index 0 → Row 0, Col 0</div>
+                        <div style="font-size:1.5rem;color:var(--warn);">Row 0 ÷ 5 = Stripe 0 → CALCULATOR 0 ACTIVATES</div>
+                    </div>
+                    <div class="calc-badge c0" style="font-size:1rem;padding:12px 24px;">CALC 0 ACTIVE (Rows 0-4)</div>
+                    <div style="display:flex;gap:16px;color:var(--muted);font-size:0.85rem;">
+                        <span style="opacity:0.4;">CALC 1 (Rows 5-9) — IDLE</span>
+                        <span style="opacity:0.4;">CALC 2 (Rows 10-14) — IDLE</span>
+                    </div>
+                    <div style="margin-top:16px;padding:12px;background:#000;border:1px solid #222;border-radius:6px;font-family:'Courier Prime';font-size:0.75rem;">
+                        <div><span class="kw">function</span> <span class="fn">route</span>(row) {</div>
+                        <div style="margin-left:16px;">calc_id = <span class="num">Math.floor</span>(row / 5) % 3;</div>
+                        <div style="margin-left:16px;"><span class="kw">return</span> calc_id; <span class="comment">// 0, 1, or 2</span></div>
+                        <div>}</div>
+                    </div>
+                </div>
+            `;
+        case 'grid-fill':
+            // Show grid filling with stripe colors
+            let gridHtml = '<h4>Memory Grid After Block A Load</h4><div class="grid-viz grid-stripe-0">';
+            for(let r=0;r<15;r++) {
+                if(r===5) gridHtml += '</div><div class="grid-viz grid-stripe-1">';
+                if(r===10) gridHtml += '</div><div class="grid-viz grid-stripe-2">';
+                gridHtml += `<div class="grid-row-label">Row ${r} (Calc ${Math.floor(r/5)})</div>`;
+                for(let c=0;c<15;c++) {
+                    const idx = r*15+c;
+                    const val = mode.tapeA[idx]?.val || (Math.floor(Math.random()*40)+10);
+                    gridHtml += `<div class="grid-cell filled" title="[${r},${c}] = ${val}">${val}</div>`;
+                }
+            }
+            gridHtml += '</div>';
+            gridHtml += '<div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:0.75rem;">';
+            gridHtml += '<span class="legend-item"><span class="legend-box calc0"></span>Calc 0 (Rows 0-4)</span>';
+            gridHtml += '<span class="legend-item"><span class="legend-box calc1"></span>Calc 1 (Rows 5-9)</span>';
+            gridHtml += '<span class="legend-item"><span class="legend-box calc2"></span>Calc 2 (Rows 10-14)</span>';
+            gridHtml += '</div>';
+            return gridHtml;
+        case 'compute':
+            // Show computation at a specific cell
+            const sample = mode.tapeB[mode.sampleIdx];
+            const base = mode.tapeA[mode.sampleIdx];
+            const diff = mode.compute(sample.val, base.val);
+            const isSignal = diff > mode.threshold;
+            const r = Math.floor(sample.idx/15), c = sample.idx%15;
+            return `
+                <h4>Computation at Grid[${r},${c}] (Calc ${Math.floor(r/5)})</h4>
+                <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+                        <div style="background:#111;border:1px solid var(--calc0);padding:16px;border-radius:8px;text-align:center;min-width:120px;">
+                            <div style="color:var(--muted);font-size:0.7rem;">TAPE SUPPLIES</div>
+                            <div style="color:var(--calc2);font-size:2rem;font-family:'Courier Prime';">${sample.val}</div>
+                            <div style="color:var(--muted);font-size:0.7rem;">Current Price</div>
+                        </div>
+                        <div style="color:var(--accent);font-size:2rem;align-self:center;">−</div>
+                        <div style="background:#111;border:1px solid var(--calc1);padding:16px;border-radius:8px;text-align:center;min-width:120px;">
+                            <div style="color:var(--muted);font-size:0.7rem;">GRID SUPPLIES</div>
+                            <div style="color:var(--calc0);font-size:2rem;font-family:'Courier Prime';">${base.val}</div>
+                            <div style="color:var(--muted);font-size:0.7rem;">Baseline (stored)</div>
+                        </div>
+                    </div>
+                    <div style="background:${isSignal?'#003300':'#1a1a00'};border:1px solid ${isSignal?'var(--accent)':'var(--warn)'};padding:16px;border-radius:8px;text-align:center;width:100%;max-width:300px;">
+                        <div style="color:var(--muted);font-size:0.7rem;">VACUUM-TUBE SUBTRACTOR (4ms)</div>
+                        <div style="font-family:'Courier Prime';font-size:2rem;color:${isSignal?'var(--accent)':'var(--warn)'};">
+                            ${sample.val} − ${base.val} = ${diff>=0?'+':''}${diff}
+                        </div>
+                        <div style="margin-top:8px;color:${isSignal?'var(--accent)':'var(--warn)'};">
+                            ${isSignal ? `🚨 THRESHOLD EXCEEDED (${diff} > ${mode.threshold}) → THYRATRON FIRES` : `Below threshold (${mode.threshold}) → no signal`}
+                        </div>
+                    </div>
+                </div>
+            `;
+        case 'thyratron':
+            // Show thyratron grid with one fired
+            const sampleT = mode.tapeB[mode.sampleIdx];
+            const baseT = mode.tapeA[mode.sampleIdx];
+            const diffT = mode.compute(sampleT.val, baseT.val);
+            const isSignalT = diffT > mode.threshold;
+            const rT = Math.floor(sampleT.idx/15), cT = sampleT.idx%15;
+            let thyHtml = '<h4>Thyratron Grid (225 gas-switch tubes)</h4><div class="thyratron-grid">';
+            for(let r=0;r<15;r++) {
+                for(let c=0;c<15;c++) {
+                    const idx = r*15+c;
+                    const fired = (idx === mode.sampleIdx && isSignalT);
+                    thyHtml += `<div class="thyratron ${fired?'fired':''}" title="[${r},${c}]"></div>`;
+                }
+            }
+            thyHtml += '</div>';
+            thyHtml += `<div style="margin-top:12px;padding:12px;background:#1a001a;border:1px solid var(--agg);border-radius:6px;">
+                <strong style="color:var(--agg);">Thyratron at [${rT},${cT}] FIRED</strong><br>
+                <small style="color:var(--muted);">Gas tube latches ON. Stays fired until Aggregator sweeps it. No CPU needed.</small>
+            </div>`;
+            return thyHtml;
+        case 'aggregator':
+            const sampleA = mode.tapeB[mode.sampleIdx];
+            const baseA = mode.tapeA[mode.sampleIdx];
+            const diffA = mode.compute(sampleA.val, baseA.val);
+            const rA = Math.floor(sampleA.idx/15), cA = sampleA.idx%15;
+            return `
+                <h4>Aggregator Sweep (Calculator 3)</h4>
+                <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+                    <div class="calc-badge agg" style="font-size:1rem;padding:12px 24px;">CALC 3 — AGGREGATOR (200 tubes)</div>
+                    <div style="background:#000;border:1px solid #222;padding:16px;border-radius:8px;text-align:center;font-family:'Courier Prime';">
+                        <div style="color:var(--muted);margin-bottom:8px;">Scanning thyratrons sequentially...</div>
+                        <div style="color:var(--agg);font-size:1.2rem;">[0,0] → [0,1] → ... → [14,14]</div>
+                        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #222;color:var(--accent);">
+                            FOUND FIRED: [${rA},${cA}] → OUTPUT: <span style="color:var(--accent);font-weight:bold;">[${rA},${cA}] ${mode.signalLabel}: +${diffA}</span>
+                        </div>
+                    </div>
+                    <div style="text-align:center;color:var(--muted);font-size:0.8rem;">
+                        Full sweep: 225 × 100ms = ~22 seconds<br>
+                        Nixie display: instant | Punched card: ~80 sec
+                    </div>
+                </div>
+            `;
+        case 'timing':
+            return `
+                <h4>Vacuum-Tube Timing Breakdown</h4>
+                <div class="code-block">
+<span class="kw">TOTAL CYCLE TIME (Block A + Block B): ~72 seconds</span>
+
+<span class="comment">// Phase 1: Ingest Baseline (Block A)</span>
+<span class="fn">tape_read</span>(1800 bits @ 100 bps)     = <span class="num">18,000</span> ms
+<span class="fn">route_and_latch</span>(225 × 7 ms)       =  <span class="num">1,575</span> ms
+
+<span class="comment">// Phase 2: Stream Compute (Block B)</span>
+<span class="fn">tape_read</span>(1800 bits @ 100 bps)     = <span class="num">18,000</span> ms
+<span class="fn">compute</span>(225 × 4 ms)               =    <span class="num">900</span> ms
+<span class="fn">threshold_compare</span>(225 × 1 ms)    =    <span class="num">225</span> ms
+
+<span class="comment">// Aggregation</span>
+<span class="fn">aggregator_sweep</span>(225 × 100 ms)   = <span class="num">22,500</span> ms
+
+<span class="comment">// Output</span>
+<span class="fn">nixie_display</span>(instant)           =      <span class="num">0</span> ms
+
+<span class="kw">TOTAL</span>                                      ≈ <span class="num">71,700</span> ms (<span class="num">71.7</span> s)
+                </div>
+                <div style="margin-top:16px;padding:12px;background:#001100;border-left:3px solid var(--warn);font-size:0.85rem;">
+                    <strong>Bottleneck:</strong> Tape I/O (51% of total time). The calculators are idle 99% of the time. 
+                    Striping helps — when tape <em>does</em> deliver, all 3 calculators work in parallel.
+                </div>
+            `;
+        case 'modes':
+            return `
+                <h4>Mode Comparison</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    ${Object.entries(MODES).map(([k,m])=>`<div style="background:#0d0d0d;border:1px solid ${k===currentMode?'var(--accent)':'#222'};padding:16px;border-radius:8px;${k===currentMode?'box-shadow:0 0 20px rgba(0,255,65,0.2);':''}">
+                        <div style="font-size:1.5rem;">${m.icon}</div>
+                        <strong style="color:${k===currentMode?'var(--accent)':'var(--text)'};">${m.name}</strong><br>
+                        <small style="color:var(--muted);">${m.description}</small>
+                    </div>`).join('')}
+                </div>
+            `;
+        default:
+            return '<div style="color:var(--muted);">Visualization not implemented</div>';
+    }
+}
+
+function updateProgress() {
+    const pct = ((currentStep) / (STEPS.length - 1)) * 100;
+    progressFill.style.width = `${pct}%`;
+    document.querySelectorAll('.progress-labels span').forEach((el, i) => {
+        el.classList.toggle('active', i === currentStep);
+    });
+}
+
+function showStep(index) {
+    currentStep = Math.max(0, Math.min(index, STEPS.length - 1));
+    document.querySelectorAll('.step').forEach((el, i) => {
+        el.style.display = i === currentStep ? 'block' : 'none';
+    });
+    prevBtn.disabled = currentStep === 0;
+    nextBtn.disabled = currentStep >= STEPS.length - 1;
+    nextBtn.textContent = currentStep >= STEPS.length - 1 ? 'Done' : 'Next →';
+    updateProgress();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+prevBtn.addEventListener('click', () => showStep(currentStep - 1));
+nextBtn.addEventListener('click', () => {
+    if (currentStep < STEPS.length - 1) showStep(currentStep + 1);
+});
+
+modeSelector.addEventListener('click', (e) => {
+    const btn = e.target.closest('.mode-btn');
+    if (!btn) return;
+    currentMode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderSteps();
+    showStep(0);
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextBtn.click(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prevBtn.click(); }
+});
+
+// Initialize
+renderSteps();
+showStep(0);
+</script>
+</body>
+</html>
